@@ -27,7 +27,7 @@ const userSchema = new Schema({
         type: String,
         required: [true, 'Password is required'],
         minLength: [8, 'Password must be at least 8 character'],
-        maxlength: [24, 'Password cannot exceed 24 characters'],
+        maxlength: [50, 'Password cannot exceed 24 characters'],
         select: false
     },
     avatar: {
@@ -40,8 +40,8 @@ const userSchema = new Schema({
     },
     role: {
         type: String,
-        enum: ['user', 'admin'],
-        default: 'user'
+        enum: ['USER', 'ADMIN'],
+        default: 'USER'
     },
     forgotPasswordToken: String,
     forgotPasswordExpiry: Date
