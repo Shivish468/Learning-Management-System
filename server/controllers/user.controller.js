@@ -155,10 +155,11 @@ const forgotPassword = async (req, res, next) => {
 
     await user.save();
 
-    const resetPasswordUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const resetPasswordURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    console.log(resetPasswordURL);
 
     const subject = 'Reset Password';
-    const message = `You can reset ou password by clicking <a href=${resetPasswordUrl} target="_blank"> Reset your password`
+    const message = `You can reset our password by clicking <a href=${resetPasswordURL} target="_blank"> Reset your password</a>\nIf the above link does not work for some reason then copy paste this link in new tab ${resetPasswordURL}.\n If you have not requested this, kindly ignore.`
 
     try {
         await sendEmail(email, subject, message);
@@ -173,7 +174,7 @@ const forgotPassword = async (req, res, next) => {
         await user.save();
         return next(new AppError(err.message, 401));
     }
-}
+};
 
 const resetPassword = async (req, res) => {
     const { resetToken } = req.params;
@@ -203,6 +204,87 @@ const resetPassword = async (req, res) => {
         success :true ,
         message:`Your account's password was successfully updated and you can now login using your new password.`
     });
+};
+
+const changePassword = async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const { id } = req.user;
+    if (!oldPassword || !newPassword ) {
+        return next(
+            new AppError("All fields are mandatory", 400)) ;
+    }
+
+    const user = User.findById(id).select('+password');
+
+    if(!user) {
+        return next(
+            new AppError(`User's profile does not exist.`, 400));
+    }
+
+    const isPasswordValid = await user.comparePassword(oldPassword);
+
+    if(!isPasswordValid) {
+        return next(
+            new AppError("Old Password doesn't match.", 401));
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    user.password = undefined;
+
+    res.status(200).json({
+        success: true,
+        message: 'Password changed successfully'
+    });
+};
+
+const updateUser = async (req, res) => {
+    const { fullName } = req.body;
+    const { id } = req.user.id;
+
+    const user = await User.findById(id);
+
+    if(!user) {
+        return next(
+            new AppError('The user with the given ID was not found.', 404 ));
+    }
+
+    if(req.fullName) {
+        user.fullName = fullName;
+    }
+
+    if(req.file) {
+        await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+        try {
+            const result = await cloudinary.v2.uploader.upload(req.file.path, {
+                folder: `lms`,
+                width: 250,
+                height: 250,
+                gravity: 'faces',
+                crop: 'fill'
+            });
+
+            if(result) {
+                user.avatar.public_id = result.public_id;
+                user.avatar.secure_url = result.secure_url;
+
+                // Remove file
+                fs.rm(`uploads/${req.file.filename}`);
+            }
+        } catch (err) {
+            return next(
+                new AppError(err || 'File not uploaded, please try again!', 500)
+            ) 
+        }
+    }
+
+    await user.save();
+
+    res.status(200).json({
+        success :true ,
+        message:' User profile updated Successfully!'
+    });
 }
 export {
     register,
@@ -210,5 +292,7 @@ export {
     logout,
     getProfile,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    changePassword,
+    updateUser
 }
