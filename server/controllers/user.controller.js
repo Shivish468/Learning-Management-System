@@ -77,7 +77,7 @@ const register = async (req, res, next) => {
     res.status(201).json({
         success: true,
         message: 'User registered successfully',
-        user
+        user,
     });
 };
         
@@ -105,7 +105,7 @@ const login = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Loggedin successfully',
-            user
+            user,
         });
         
     } catch (err) {
